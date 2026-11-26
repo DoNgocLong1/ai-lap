@@ -48,8 +48,28 @@ async def fake_call(i: int) -> str:
 
 
 async def main():
-    results = await asyncio.gather(*(fake_call(i) for i in range(3)))
+    results = await asyncio.gather(*(fake_call(i) for i in range(10)))
     print(f"6. lặp lại 3 lần gọi, tổng 1s: {results}")
 
 
 asyncio.run(main())
+
+
+def titles_with(items: list[dict], word: str) -> list[str]:
+    list_data: list[str] = []
+    for item in items:
+        if word.lower() in str(item["title"]).lower():
+            list_data.append(item["title"])
+    return list_data
+
+
+print(f"7. Lấy với title {titles_with(tickets, 'login')}")
+
+
+def show_errors(items: list[dict]):
+    for index, item in enumerate(items):
+        print(f"Lỗi # {index + 1}: {item['title'] or ''}")
+
+
+print("8. Danh sách lỗi: ")
+show_errors(data)
