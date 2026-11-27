@@ -1,53 +1,34 @@
+import logging
 import os
-from typing import TypedDict
 
 from anthropic import AsyncAnthropic
+from anthropic.types import TextBlock
 from dotenv import load_dotenv
 
-from app.schemas import TicketOut
-
 load_dotenv()
-client = AsyncAnthropic()
-MODEL = os.getenv("LLM_MODEL", "claude-haiku-5-5")
-
-SYSTEM_PROMPT = """Bạn là hệ thống phân loại ticket phần mềm.
-Đọc ticket và trả về DUY NHẤT một object JSON. Không viết văn bản khác. Không dùng markdown.
-JSON có các trường:
-- category: một trong "bug", "feature_request", "question"
-- severity: một trong "low", "medium", "high", "critical"
-- module: tên module bị ảnh hưởng; dùng "unknown" nếu ticket không nêu
-- summary: tóm tắt ticket trong 1 câu tiếng Việt"""
+log = logging.getLogger(__name__)
+client = AsyncAnthropic(max_retries=3, timeout=30)
+DEFAULT_MODEL = os.getenv("LLM_MODEL", "claude-haiku-5-5")
 
 
-class ClassifyRequest(TypedDict):
-    model: str
-    system_prompt: str
-    max_tokens: int
-    messages: list[dict]
-
-
-def parse_llm_output(text: str) -> TicketOut:
-    text = text.strip()
-    text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    return TicketOut.model_validate_json(text)
-
-
-def build_request(content: str):
-    return ClassifyRequest(
-        model=MODEL,
-        max_tokens=300,
-        system_prompt=SYSTEM_PROMPT,
+async def complete(
+    system_prompt: str, content: str, max_tokens: int, model: str = DEFAULT_MODEL
+) -> str:
+    msg = await client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        system=system_prompt,
         messages=[{"role": "user", "content": content}],
     )
 
-
-async def classify_ticket(content: str) -> TicketOut:
-    message = await client.messages.create(
-        ClassifyRequest(
-            model=MODEL,
-            max_tokens=300,
-            system_prompt=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": content}],
-        ),
+    log.info(
+        "llm model=%s input_tokens=%d output_tokens=%d stop=%s",
+        model,
+        msg.usage.input_tokens,
+        msg.usage.output_tokens,
+        msg.stop_reason,
     )
-    return parse_llm_output(message.content[0].text)
+    for block in msg.content:
+        if isinstance(block, TextBlock):
+            return block.text
+    raise ValueError(f"LLM không trả về text (stop_reason={msg.stop_reason})")

@@ -7,7 +7,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import ValidationError
 
-from app.llm import (
+from app.classifier import (
     MODEL,
     ClassifyRequest,
     build_request,

@@ -2,7 +2,7 @@ import anthropic
 from fastapi import FastAPI, HTTPException
 from pydantic import ValidationError
 
-from app.llm import classify_ticket
+from app.classifier import classify_ticket
 from app.schemas import TicketIn, TicketOut
 
 app = FastAPI(title="Ticket Classifier")
@@ -20,4 +20,6 @@ async def classify(ticket: TicketIn):
     except ValidationError:
         raise HTTPException(status_code=502, detail="LLM trả về JSON sai schema")
     except anthropic.APIError as e:
-        raise HTTPException(status_code=503, detail=f"Lỗi gọi LLM: {e.__class__.__name__}")
+        raise HTTPException(
+            status_code=503, detail=f"Lỗi gọi LLM: {e.__class__.__name__}"
+        )
